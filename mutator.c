@@ -13,7 +13,10 @@ void debug_printf(const char *format, ...) {
 
 void debug_hexdump(const void *buf, const unsigned int len) {
 #ifdef DEBUG
-    hexdump(buf, len);
+    hexdump(buf, len > 1024 ? 1024: len);
+    if (len > 1024) {
+        printf("  ... (truncated)\n");
+    }
 #endif
 }
 
@@ -130,7 +133,9 @@ extern size_t afl_custom_fuzz(custom_mutator_t *data,
     uint32_t decoded_size, encoded_size;
     decode(buf, data->fuzz_buf, &decoded_size);
     memcpy(data->fuzz_buf + decoded_size, MUTATOR_APPEND, append);
-    encode(data->fuzz_buf, decoded_size + append, data->fuzz_buf, &encoded_size);
+
+    encoded_size = decoded_size + append;
+    // encode(data->fuzz_buf, decoded_size + append, data->fuzz_buf, &encoded_size);
 
     debug_printf("[mutator] Generated mutated data of size %ld\n", encoded_size);
     debug_hexdump(data->fuzz_buf, encoded_size);
@@ -155,6 +160,7 @@ extern size_t afl_custom_fuzz(custom_mutator_t *data,
  * @return Size of the output buffer after processing or the needed amount.
  *     A return of 0 indicates an error.
  */
+/*
 extern size_t afl_custom_post_process(custom_mutator_t *data, uint8_t *buf,
                                           size_t buf_size, uint8_t **out_buf) {
     debug_printf("\n[mutator] Called afl_custom_post_process with buffer of size %ld\n", buf_size);
@@ -181,6 +187,7 @@ extern size_t afl_custom_post_process(custom_mutator_t *data, uint8_t *buf,
     *out_buf = data->post_process_buf;
     return decoded_size;
 }
+*/
 
 /**
  * Deinitialize everything

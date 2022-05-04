@@ -36,8 +36,7 @@ stack buffer-overflow vulnerability.
 
 - `afl_custom_init` which allocates memory for the mutator parameters.
 - `afl_custom_fuzz` which mutates the given input by adding a random number of
-  characters at the end of the input.
-- `afl_custom_post_process` which converts the buffer from the mutator's
+  characters at the end of the input and converts the buffer from the mutator's
   internal representation to a plain buffer.
 - `afl_custom_deinit` which frees the memory allocated for the mutator
   parameters.
@@ -87,35 +86,35 @@ You can fuzz the target using AFL++ and the custom mutator by running:
 
 # Observation
 
-As of commit [c7bb0a9](https://github.com/AFLplusplus/AFLplusplus/commit/13e0fd3e1a3767c52bc4243e2132f0fd32579eed),
-after the initial calibration phase, you should observer the following crash:
+As of commit [13e0fd3](https://github.com/AFLplusplus/AFLplusplus/commit/13e0fd3e1a3767c52bc4243e2132f0fd32579eed),
+after running AFL++ for a while, you should observer the following crash:
 
 ```
-[mutator] Called afl_custom_fuzz with buffer of size 8
-  0000  00 00 00 04 74 65 73 74                          ....test
-[mutator] Generated mutated data of size 16
-  0000  00 00 00 0c 74 65 73 74 30 31 32 33 34 35 36 37  ....test01234567
-
-[mutator] Called afl_custom_post_process with buffer of size 16
-  0000  00 00 00 0c 74 65 73 74 30 31 32 33 34 35 36 37  ....test01234567
-[mutator] Generated post-process data of size 12
-  0000  74 65 73 74 30 31 32 33 34 35 36 37              test01234567
-[target] Reading file at /dev/shm/.cur_input
-[target] Read 12 bytes from file
-  0000  74 65 73 74 30 31 32 33 34 35 36 37              test01234567
-[D] DEBUG: calibration stage 1/8
-
-[mutator] Called afl_custom_post_process with buffer of size 12
-  0000  00 00 00 0c 74 65 73 74 30 31 32 33              ....test0123
-[mutator] Buffer size doesn't match encoded size: expected 16 but got 12
+[mutator] Called afl_custom_fuzz with buffer of size 4
+  0000  74 65 73 74                                      test
+[mutator] Buffer size doesn't match encoded size: expected 1952805752 but got 4
 [mutator] According to the encoding, the buffer looks like:
-  0000  00 00 00 0c 74 65 73 74 30 31 32 33 34 35 36 37  ....test01234567
+  0000  74 65 73 74 f7 90 87 3f fd ba 1a 29 1f 8e af 3f  test...?...)...?
+  0010  15 2b 54 eb 47 aa c0 3f ed a0 ca e7 a5 02 c0 3f  .+T.G..?.......?
+  0020  45 e3 07 1a 62 d3 c5 3f 30 b2 12 18 b0 a7 c3 3f  E...b..?0......?
+  0030  3c 45 a8 10 d0 ad c2 3f 34 04 c4 8a ac 6f e3 3f  <E.....?4....o.?
+  0040  06 00 00 00 00 00 f0 3f 00 00 00 00 00 00 00 00  .......?........
+  0050  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0060  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0070  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  0080  91 00 00 00 00 00 00 00 80 00 00 00 00 00 00 00  ................
+  0090  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00a0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00b0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00c0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00d0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00e0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  00f0  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+  ... (truncated)
 
-[-] PROGRAM ABORT : Custom_post_process failed (ret: 0)
-         Location : write_to_testcase(), src/afl-fuzz-run.c:112
+[-] PROGRAM ABORT : Error in custom_fuzz. Size returned: 0
+         Location : fuzz_one_original(), src/afl-fuzz-one.c:1874
 ```
 
-The `afl_custom_post_process` function is called twice. The second time, the
-wrong size is passed as argument (though the same value is stored in the `buf`
-argument). This new size is the value previously returned by the first execution
-of `afl_custom_post_process`.
+A plain buffer is passed to `afl_custom_fuzz` whereas it expects a buffer
+encoded using its internal representation.
